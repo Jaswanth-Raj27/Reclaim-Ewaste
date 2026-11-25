@@ -34,6 +34,8 @@ function round(w,h,d,r,mat,x=0,y=0,z=0,parent=root){const shape=new THREE.Shape(
 function display(w,h,x,y,z,parent=root){sw=w;sh=h;screen=box(w,h,.025,x,y,z,screenMat,parent);return screen;}
 function keyboard(w,h,y,z,parent=root){for(let row=0;row<5;row++)for(let col=0;col<12;col++)box(w/14,.024,h/7,-w/2+col*w/12+.1,y,z-h/2+row*h/5,edge,parent);}
 switch(data.device){
+case 'Tablet':
+ root.scale.set(1.45,1.12,1);
 case 'Smartphone':
  round(1.38,2.75,.16,.18,metal);round(1.24,2.57,.035,.13,black,0,0,.105);display(1.12,2.30,0,-.03,.14);box(.38,.055,.035,0,1.12,.17,black);box(.055,.4,.07,.73,.5,0,edge);box(.4,.04,.03,0,-1.15,.17,ivory);break;
 case 'Laptop':
@@ -46,6 +48,34 @@ case 'Printer':
  round(2.65,1.05,1.8,.10,ivory,0,-.3,0);box(2.35,.22,1.3,0,.36,-.15,metal);box(1.8,.06,.8,0,-.65,1.04,edge);box(1.55,.018,.7,0,-.59,1.03,ivory);box(1.6,.75,.045,0,.85,-.65,ivory);display(.65,.24,.68,.05,.94);break;
 case 'Keyboard':
  box(3.6,.16,1.35,0,-.25,0,metal);keyboard(3.35,1.2,-.14,0);root.rotation.x=.42;break;
+case 'Smartwatch':
+ box(.65,3.1,.12,0,0,-.16,edge);round(1.15,1.32,.28,.24,metal);display(.92,1.06,0,0,.18);box(.14,.26,.15,.63,.1,0,metal);break;
+case 'Mouse':
+ round(1.2,1.8,.65,.45,ivory);box(.045,.7,.025,0,.4,.37,edge);box(.16,.35,.08,0,.25,.41,black);break;
+case 'Headphones / Earbuds':
+ round(2.6,2.5,.22,.65,edge);round(2.05,2.0,.28,.6,ivory,0,-.25,.04);round(.65,1.15,.65,.25,black,-1.1,-.55,.25);round(.65,1.15,.65,.25,black,1.1,-.55,.25);break;
+case 'Camera':
+ round(2.5,1.65,.8,.15,edge);round(1.1,1.1,.8,.5,metal,.25,0,.7);round(.8,.8,.12,.38,black,.25,0,1.14);box(.65,.3,.6,-.6,.94,0,black);break;
+case 'Speaker':
+ round(1.6,2.6,1,.18,edge);round(1.15,1.15,.08,.55,black,0,-.4,.56);round(.65,.65,.08,.3,metal,0,.72,.56);break;
+case 'Router / Modem':
+ box(2.5,.65,1.4,0,-.4,0,ivory);box(.08,1.5,.08,-1,.55,-.5,edge);box(.08,1.5,.08,1,.55,-.5,edge);for(let i=0;i<4;i++)box(.08,.05,.03,-.6+i*.3,-.35,.73,screenMat);break;
+case 'Gaming Console':
+ round(1.2,2.7,1,.1,ivory);box(.18,2.5,1.06,0,0,0,edge);box(.04,.65,.025,.36,.3,.55,black);break;
+case 'Power Bank':case 'Charger':
+ round(1.5,2,.6,.15,ivory);box(.5,.12,.08,0,.8,.35,black);if(data.device==='Charger'){box(.1,.5,.15,-.25,1.25,0,metal);box(.1,.5,.15,.25,1.25,0,metal);}break;
+case 'Scanner':
+ round(3,.4,2,.06,ivory);box(2.7,.06,1.7,0,.26,0,edge);break;
+case 'Refrigerator':
+ box(1.9,3.1,1.4,0,0,0,ivory);box(1.8,.85,.08,0,1,.75,metal);box(1.8,2,.08,0,-.5,.75,metal);box(.09,.5,.12,.65,.92,.85,black);box(.09,.65,.12,.65,-.1,.85,black);break;
+case 'Washing Machine':
+ box(2.4,2.6,1.6,0,0,0,ivory);round(1.7,1.7,.18,.8,edge,0,-.25,.9);round(1.3,1.3,.1,.6,black,0,-.25,1.02);display(.65,.25,-.5,.98,.84);break;
+case 'Air Conditioner':
+ round(3.5,1.15,1,.15,ivory);for(let i=0;i<4;i++)box(3,.035,.03,0,-.15-i*.1,.56,edge);break;
+case 'Microwave Oven':
+ round(3,1.8,1.5,.08,ivory);display(2,1.35,-.3,0,.8);box(.1,1.05,.13,.8,0,.85,metal);box(.25,.25,.1,1.18,-.35,.84,edge);break;
+case 'Other':
+ round(2,2.2,1,.15,metal);display(1.3,.7,0,.35,.55);box(.25,.25,.1,0,-.5,.57,edge);break;
 case 'Lithium-ion Battery':
  round(1.55,2.35,.5,.10,edge);box(.40,.12,.30,0,1.25,0,metal);display(1.2,1.6,0,0,.28);break;
 }

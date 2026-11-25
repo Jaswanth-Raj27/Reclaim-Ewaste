@@ -288,7 +288,7 @@ for view, workspace_tab in zip(workspace_names, workspace_tabs):
             st.caption('Inspect the device, record functional checks, and understand its recovery options.')
             controls,scene_col=st.columns([1,2.1],gap='large')
             with controls:
-                ewaste_type=st.selectbox('Device type',list(EWasteConditionAssessment.DEVICE_VALUES))
+                ewaste_type=st.selectbox('Device type',list(PROFILES))
                 condition_score=st.slider('Physical condition',0,100,85,help='75–100: intact. 40–74: cracks. Below 40: severe damage.')
                 functionality=st.slider('Functionality',0,100,85)
                 battery_health=st.slider('Battery health',0,100,80) if ewaste_type in BATTERY_DEVICES else None

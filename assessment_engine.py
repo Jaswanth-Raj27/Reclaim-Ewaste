@@ -9,7 +9,25 @@ PROFILES = {
  'Keyboard': ('Key response', 'Connection', 'Cable or port'),
  'Lithium-ion Battery': ('Charge retention', 'Terminal condition', 'Charging stability'),
 }
-BATTERY_DEVICES={'Smartphone','Laptop','Lithium-ion Battery'}
+PROFILES.update({
+ 'Tablet': ('Touchscreen response','Charging port','Camera operation'),
+ 'Smartwatch': ('Display and touch','Charging contacts','Buttons and sensors'),
+ 'Scanner': ('Scan output','Paper or lid mechanism','Connection'),
+ 'Mouse': ('Buttons and scroll wheel','Tracking sensor','Connection'),
+ 'Headphones / Earbuds': ('Audio in both channels','Microphone','Connection'),
+ 'Speaker': ('Audio output','Controls','Power and connection'),
+ 'Camera': ('Image capture','Lens operation','Storage and controls'),
+ 'Gaming Console': ('Boot and storage','Video output','Controller connection'),
+ 'Router / Modem': ('Power stability','Network connection','Ports'),
+ 'Power Bank': ('Charge retention','Output ports','Charging stability'),
+ 'Charger': ('Cable and insulation','Connector condition','Output operation'),
+ 'Refrigerator': ('Cooling performance','Door seal','Controls'),
+ 'Washing Machine': ('Drum operation','Drain and leak check','Controls'),
+ 'Air Conditioner': ('Cooling performance','Airflow','Controls'),
+ 'Microwave Oven': ('Door and latch condition','Controls','Reported heating operation'),
+ 'Other': ('Main function','Power or connection','Controls and enclosure'),
+})
+BATTERY_DEVICES={'Smartphone','Laptop','Tablet','Smartwatch','Headphones / Earbuds','Camera','Power Bank','Lithium-ion Battery'}
 
 def evaluate(device,condition,functionality,battery,checks,hazard=False):
     values=[condition,functionality]+([battery] if battery is not None else [])
