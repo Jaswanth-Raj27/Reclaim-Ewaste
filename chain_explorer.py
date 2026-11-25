@@ -14,12 +14,12 @@ def mine_development_block(w):
     return latest
 
 def render_chain(w,contract):
-    st.subheader('Live blockchain')
-    st.caption('Actual blocks from the running local Ethereum node. Every block links to the previous block by its parent hash.')
+    st.subheader('How the records are stored')
+    st.caption('Think of each block as a page in a logbook. A digital fingerprint connects it to the previous page. The blocks below come from your running local blockchain.')
     latest=w.eth.block_number
     actions,status=st.columns([1,2])
     with actions:
-        if st.button('Add block to chain',key='mine_development_block',use_container_width=True):
+        if st.button('Try adding an empty block',key='mine_development_block',use_container_width=True):
             try:
                 block=mine_development_block(w)
                 st.session_state.new_chain_block=block.number
@@ -27,12 +27,12 @@ def render_chain(w,contract):
                 st.rerun()
             except Exception as exc:st.error(str(exc))
     with status:
-        st.caption('Mines an empty development block. To include product data, register a product or record an event below; its transaction is mined automatically.')
+        st.caption('Optional learning tool: adds a block without product data. Saving a product update automatically creates a transaction and a block—you do not need this button.')
     if st.session_state.get('new_chain_block') is not None:
         st.success(f"Block #{st.session_state.new_chain_block} added to the local chain.")
     # Limit rendering while retaining access to the complete existing chain.
     initial=max(0,latest-5)
-    end=st.number_input('Window ending at block',min_value=0,max_value=latest,value=latest,step=1,key='chain_window_end_'+str(latest))
+    end=st.number_input('Show recent blocks ending at',min_value=0,max_value=latest,value=latest,step=1,key='chain_window_end_'+str(latest))
     numbers=list(range(max(0,end-5),end+1))
     blocks=[w.eth.get_block(n) for n in numbers]
     logs=contract.events.Recorded().get_logs(from_block=numbers[0],to_block=numbers[-1])
@@ -49,8 +49,8 @@ def render_chain(w,contract):
         item=f'''<article class="chain-block {'new' if is_new else ''}" aria-label="Block {block.number}, {count} transactions, {html.escape(label)}">
 <div class="block-number">Block #{block.number}</div><div class="block-kind">{html.escape(label)}</div>
 <div class="block-meta">{count} transaction{'s' if count!=1 else ''} · {stamp}</div>
-<div class="hash-label">Hash</div><code>{hash_hex[:12]}…{hash_hex[-6:]}</code>
-<div class="hash-label">Parent hash</div><code>{parent[:12]}…{parent[-6:]}</code></article>'''
+<div class="hash-label">This block’s fingerprint</div><code>{hash_hex[:12]}…{hash_hex[-6:]}</code>
+<div class="hash-label">Previous block’s fingerprint</div><code>{parent[:12]}…{parent[-6:]}</code></article>'''
         if i:items.append('<div class="chain-link" aria-label="Linked by parent hash">→</div>')
         items.append(item)
     st.markdown('''<style>
@@ -63,7 +63,7 @@ def render_chain(w,contract):
     .chain-link{color:#B74936;font-size:22px;flex:0 0 12px}
     </style><div class="chain-strip" role="region" aria-label="Existing blockchain, oldest to newest">'''+''.join(items)+'</div>',unsafe_allow_html=True)
     st.caption(f'Showing blocks {numbers[0]}–{numbers[-1]} of {latest+1} total, including genesis. Arrows show chronological order; each newer block stores the older block’s hash.')
-    with st.expander('Inspect a block and verify its link'):
+    with st.expander('Check a block’s link and technical details'):
         chosen=st.number_input('Block number',min_value=0,max_value=latest,value=min(selected,latest),step=1,key='inspect_block_'+str(latest))
         block=w.eth.get_block(chosen,full_transactions=True)
         if chosen>0:
