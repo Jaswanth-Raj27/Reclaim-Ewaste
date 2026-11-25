@@ -11,3 +11,6 @@ App_Production.before-*.py
 *.sql.gz
 .idea/
 .DS_Store
+
+node_modules/
+.local/

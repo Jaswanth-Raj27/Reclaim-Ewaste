@@ -1,0 +1,30 @@
+{
+  "name": "reclaim-ewaste",
+  "version": "1.0.0",
+  "description": "A Streamlit research prototype for exploring e-waste generation, recording device handoffs, and assessing possible recovery routes with an interactive 3D device scene.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "compile": "node scripts/compile.cjs",
+    "chain": "node scripts/node.cjs",
+    "test:blockchain": "python tests/blockchain_integration.py"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jaswanth-Raj27/Reclaim-Ewaste.git"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Jaswanth-Raj27/reclaim-ewaste/issues"
+  },
+  "homepage": "https://github.com/Jaswanth-Raj27/reclaim-ewaste#readme",
+  "dependencies": {
+    "ganache": "7.9.2",
+    "solc": "0.8.30"
+  },
+  "private": true
+}
