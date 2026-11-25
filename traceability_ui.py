@@ -35,9 +35,10 @@ def render():
     task=st.radio('What would you like to do?', ['Update a device','Add a device'],horizontal=True,label_visibility='collapsed')
     if task=='Add a device':
         st.subheader('Add your device')
+        kind=st.selectbox('Device type',['Smartphone','Laptop','Tablet','Smartwatch','Desktop Computer','Monitor','Television','Printer','Scanner','Keyboard','Mouse','Headphones / Earbuds','Speaker','Camera','Gaming Console','Router / Modem','Power Bank','Charger','Lithium-ion Battery','Refrigerator','Washing Machine','Air Conditioner','Microwave Oven','Other'])
         with st.form('register_passport'):
             label=st.text_input('Give your device a name',placeholder='For example, My old laptop',max_chars=120)
-            kind=st.selectbox('Device category',['Smartphone','Laptop','Television','Lithium-ion Battery','Desktop Computer','Printer','Monitor','Keyboard'])
+            custom_kind=st.text_input('What type of product is it?',placeholder='For example, Projector',max_chars=60) if kind=='Other' else ''
             with st.expander('Attach a file (optional)'):
                 evidence=st.file_uploader('Choose a file',key='registration_evidence')
                 st.caption('Only a fingerprint of the file is saved. The file itself is not uploaded.')
@@ -45,9 +46,11 @@ def render():
         if submitted:
             try:
                 if not label.strip():raise ValueError('Give your device a name first.')
+                device_type=custom_kind.strip() if kind=='Other' else kind
+                if not device_type:raise ValueError('Enter the product type first.')
                 ref='DEVICE-'+uuid.uuid4().hex.upper()
                 digest=hashlib.sha256(evidence.getvalue()).digest() if evidence else bytes(32)
-                st.session_state.passport_receipt=send(w,c.functions.register(product_id(ref),label.strip(),kind,digest),actor)
+                st.session_state.passport_receipt=send(w,c.functions.register(product_id(ref),label.strip(),device_type,digest),actor)
                 st.session_state.passport_lookup=ref.strip();st.rerun()
             except Exception as e:st.error(str(e))
         return
