@@ -4,7 +4,8 @@ A Streamlit research prototype for electronic-product passports, Ethereum custod
 
 ## Blockchain product traceability
 
-- Register an opaque product reference, public label and device category.
+- **Add a device:** choose its type, give it a name and press **Add to blockchain**. A unique device reference is generated automatically.
+- **Update a device:** select it by name, choose what happened and press **Save to blockchain**. Notes and evidence files are optional for lifecycle updates; a note needs text.
 - Look up a passport by reference or blockchain ID; download its QR code.
 - Current custodian proposes a transfer; only the nominated recipient can accept it. Owners can cancel pending transfers.
 - Track Registered → Collected → Inspected → Repaired or Recycled. Repaired products can re-enter collection/inspection. Recycling ends further custody/stage transitions.
@@ -12,7 +13,9 @@ A Streamlit research prototype for electronic-product passports, Ethereum custod
 - Evidence files are SHA-256 hashed. Only the hash is recorded; file contents are neither stored nor published by the app.
 - View on-chain history, confirmation transaction hashes and blocks; export passport JSON or verify evidence against recorded hashes.
 - Explore existing EVM blocks as a linked diagram with block numbers, hashes, parent hashes, transaction counts and app events. Browse older block windows and inspect full transaction details.
-- The **Add block to chain** button mines a real empty block on the local development chain. It does not create a passport event; registrations, custody changes and lifecycle events create their own transaction blocks.
+- **Check the chain** checks every parent link from the first block to a fixed latest-block snapshot and reports broken links or a successful match. Check again after adding new blocks. This checks local link consistency, not independent consensus, physical authenticity or an externally trusted copy.
+- Saving a registration, handover or lifecycle update automatically creates a transaction block. There is no separate block-creation step in the interface.
+- Demo participant settings and technical identifiers are tucked away. A clearly labelled demo switch lets you act as a device’s current holder to try updates.
 
 `contracts/ProductPassport.sol` enforces owner permissions, two-party handoffs, unique IDs and lifecycle transitions. This replaces the MySQL hash-chain demonstration. Existing MySQL records are not migrated or presented as blockchain history.
 
@@ -49,11 +52,28 @@ python passport_server.py --host 192.168.1.10 --port 8502
 
 Set `passport_base_url = "http://192.168.1.10:8502"` in ignored `.streamlit/secrets.toml`, or set `RECLAIM_PASSPORT_BASE_URL` before starting Streamlit. Generate a fresh QR after changing the destination. Keep the viewer and blockchain running; allow the viewer on your private network if Windows asks. The viewer exposes only passport reads; keep Streamlit and the Ethereum RPC on loopback. An IP change requires updating the setting and generating new QR codes. Public hosting, wallet authentication and public-chain deployment are not implemented.
 
-## Other screens
+## Device assessment
 
-- Outlook: regression scenario forecasts, charts and CSV export.
-- Device assessment: eight procedural 3D device types, animated damage, rotation/zoom, device-specific checks and explained triage. Critical faults override average scores.
-- Ink and vermilion interface with client-side tabs.
+The assessment selector supports **23 named device types plus Other**, matching the blockchain registration categories:
+
+| Group | Device types |
+| --- | --- |
+| Personal and computing | Smartphone, laptop, tablet, smartwatch, desktop computer, monitor, keyboard, mouse |
+| Audio, imaging and entertainment | Television, headphones / earbuds, speaker, camera, gaming console |
+| Office and networking | Printer, scanner, router / modem |
+| Power | Lithium-ion battery, power bank, charger |
+| Appliances | Refrigerator, washing machine, air conditioner, microwave oven |
+| Other | General checks and an illustrative enclosure; registration also accepts a custom type name |
+
+Each type has three functional checks and an illustrative 3D preview. Physical-condition changes show cracks and separated parts; functionality controls the screen appearance where a screen is present. Drag to rotate and scroll to zoom. Some related types share a stylised model, such as headphones and earbuds.
+
+Battery health appears for smartphone, laptop, tablet, smartwatch, headphones / earbuds, camera, power bank and lithium-ion battery. The profiles assume rechargeable versions of these devices.
+
+The result explains why a device is a reuse or refurbishment candidate, needs repair or battery service, needs further inspection, or requires specialist handling. Reported hazards and critical faults override the average condition score. Checks are prototype triage inputs; they are not instructions to open equipment or perform electrical testing.
+
+## Outlook and interface
+
+Outlook provides regression scenario forecasts, charts and CSV export. The workspace uses the ink-and-vermilion palette with client-side tabs for Outlook, Traceability and Device assessment.
 
 ## Validation
 
@@ -62,6 +82,8 @@ python -m unittest discover -s tests
 # Requires running local node; deploys a separate integration-test contract:
 python tests/blockchain_integration.py
 ```
+
+The unit suite covers assessment rules, QR links, development mining and successful/broken chain links.
 
 Integration checks cover duplicate registration, unauthorised actions, transfer acceptance/cancellation, lifecycle order, terminal recycling, append-only correction and evidence hashes. Test contracts do not populate the app contract.
 
