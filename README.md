@@ -41,7 +41,13 @@ The node listens only on `127.0.0.1:8545`, chain ID 1337. Its generated developm
 
 Chain data and deployment records live under ignored `.local/`. Restarting the node preserves its state. Back up this directory locally to retain demo history; it contains development account material and must never be committed. `deploy.py` reuses its matching deployment. Deleting `.local/` resets the development chain.
 
-QR links default to `http://127.0.0.1:8501/?product=<id>` and open Traceability automatically. A phone cannot reach your computer through its own localhost. `RECLAIM_PASSPORT_BASE_URL` supports a future app URL, but public hosting, wallet authentication and public-chain deployment are not implemented. Product IDs are scoped to the displayed network and contract.
+QR links include the product ID, chain ID and contract address. Without configuration they use localhost, which only opens on the computer. For phone scanning on the same Wi-Fi, start the separate read-only viewer (replace the example IP with your computer's Wi-Fi IPv4 address):
+
+```powershell
+python passport_server.py --host 192.168.1.10 --port 8502
+```
+
+Set `passport_base_url = "http://192.168.1.10:8502"` in ignored `.streamlit/secrets.toml`, or set `RECLAIM_PASSPORT_BASE_URL` before starting Streamlit. Generate a fresh QR after changing the destination. Keep the viewer and blockchain running; allow the viewer on your private network if Windows asks. The viewer exposes only passport reads; keep Streamlit and the Ethereum RPC on loopback. An IP change requires updating the setting and generating new QR codes. Public hosting, wallet authentication and public-chain deployment are not implemented.
 
 ## Other screens
 

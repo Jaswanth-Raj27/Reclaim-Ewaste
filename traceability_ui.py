@@ -6,6 +6,7 @@ import qrcode
 from web3 import Web3
 from blockchain_client import connect,product_id,send,STAGES,NEXT,ZERO
 from chain_explorer import render_chain
+from passport_links import passport_url,qr_png
 
 def render():
     st.title('Product passports')
@@ -43,24 +44,45 @@ def render():
             selected=st.selectbox('Product ID',ids,key='browse_passport')
             if st.button('Open selected passport'):st.session_state.passport_lookup=selected;st.rerun()
             if count>100:st.caption('Showing first 100. Use exact ID lookup for others.')
-    if 'passport_lookup' not in st.session_state:st.session_state.passport_lookup=st.query_params.get('product','')
+    incoming=st.query_params.get('product','')
+    if incoming and incoming!=st.session_state.get('_last_passport_link'):
+        st.session_state.passport_lookup=incoming
+        st.session_state._last_passport_link=incoming
+    if 'passport_lookup' not in st.session_state:st.session_state.passport_lookup=''
+    expected_chain=st.query_params.get('chain')
+    expected_contract=st.query_params.get('contract')
+    if (expected_chain and expected_chain!=str(w.eth.chain_id)) or (expected_contract and expected_contract.lower()!=c.address.lower()):
+        st.error('This QR belongs to a different blockchain deployment. Connect to its original network and contract to view the passport.');return
     lookup=st.text_input('Trace a product reference or blockchain ID',key='passport_lookup')
     if not lookup.strip():return
     try:pid=product_id(lookup);p=c.functions.getProduct(pid).call()
     except Exception:st.warning('No passport found for this reference on the current contract.');return
     pid_hex=Web3.to_hex(pid)
     a,b=st.columns([2,1])
-    base=os.getenv('RECLAIM_PASSPORT_BASE_URL','http://127.0.0.1:8501').rstrip('/')
-    url=base+'/?'+urlencode({'product':pid_hex})
+    base=os.getenv('RECLAIM_PASSPORT_BASE_URL')
+    if not base:
+        try:base=st.secrets.get('passport_base_url','http://127.0.0.1:8501')
+        except FileNotFoundError:base='http://127.0.0.1:8501'
+    base=base.rstrip('/')
+    try:url=passport_url(base,pid_hex,w.eth.chain_id,c.address)
+    except ValueError as exc:st.error(str(exc));return
     with a:
         st.subheader(p[0]);st.write(f'{p[1]} · {STAGES[p[4]]}')
         st.caption('Blockchain product ID');st.code(pid_hex,language=None)
         st.write('Current custodian');st.code(p[2],language=None)
         if p[3]!=ZERO:st.write('Pending recipient: '+p[3])
-        st.caption('QR links require the app and the same node/deployment. A localhost link works only on this computer; the base URL is configurable for a future hosted app.')
+        st.link_button('Open passport link',url)
+        st.caption('The app and original blockchain must be running. This link identifies the product, chain and contract.')
+        if '127.0.0.1' in base or 'localhost' in base:
+            st.info('Computer-only QR: this address cannot open on your phone. A phone-accessible passport address is not configured.')
+        else:
+            st.caption('For a Wi-Fi address, connect your phone to the same network as this computer. Keep the passport viewer and blockchain running.')
+        with st.expander('QR destination'):
+            st.code(url,language=None)
     with b:
-        qr=qrcode.make(url);buff=io.BytesIO();qr.save(buff,format='PNG');st.image(buff.getvalue(),width=150)
-        st.download_button('Download product QR',buff.getvalue(),'reclaim-'+pid_hex[2:14]+'.png','image/png')
+        png=qr_png(url)
+        st.image(png,width=280)
+        st.download_button('Download product QR',png,'reclaim-'+pid_hex[2:14]+'.png','image/png')
     if actor.lower()==p[2].lower():
         with st.expander('Owner actions'):
             if p[4]!=4 and p[3]==ZERO:
