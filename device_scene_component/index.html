@@ -1,0 +1,86 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+*{box-sizing:border-box}body{margin:0;background:#EEECE7;color:#232323;font:14px system-ui,sans-serif}#scene{width:100%;height:440px;position:relative;touch-action:none}canvas{display:block;width:100%;height:100%;cursor:grab}canvas:active{cursor:grabbing}.top{position:absolute;top:20px;left:22px;right:22px;display:flex;justify-content:space-between;pointer-events:none}.name{font-weight:600}.state{font-size:12px;border:1px solid #D8D3CB;padding:5px 9px;border-radius:3px;background:#F6F5F2}.bottom{position:absolute;bottom:18px;left:22px;right:22px;display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#6E6A65;pointer-events:none}button{position:absolute;right:20px;bottom:48px;background:#F6F5F2;border:1px solid #D8D3CB;padding:7px 10px;color:#232323;border-radius:3px;cursor:pointer}#fallback{display:none;padding:90px 30px;text-align:center;line-height:1.7}button:focus-visible{outline:2px solid #B74936}
+</style></head><body><div id="scene" role="img" aria-label="Interactive 3D device condition illustration"><div class="top"><span class="name" id="name"></span><span class="state" id="state"></span></div><div id="fallback">The 3D preview requires WebGL. Your assessment remains available beside this scene.</div><button id="reset" aria-label="Reset 3D view">Reset view</button><div class="bottom"><span>Drag to rotate · Scroll to zoom</span><span>Illustrative condition model</span></div></div><script src="./three.min.js"></script><script>
+let previousData=null,disposeScene=null,viewRotation=null;
+function renderScene(data){
+if(disposeScene)disposeScene();
+const old=previousData&&previousData.device===data.device?previousData:data;
+previousData={...data};
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+document.getElementById('name').textContent=data.device;
+const severity=data.condition>=75?0:data.condition>=40?1:2;
+document.getElementById('state').textContent=['Intact','Surface damage','Severe damage'][severity];
+const host=document.getElementById('scene');
+try {
+const scene=new THREE.Scene();scene.background=new THREE.Color('#EEECE7');
+const camera=new THREE.PerspectiveCamera(34,1,.1,100);camera.position.set(0,1.5,8.6);camera.lookAt(0,0,0);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;host.prepend(renderer.domElement);
+let stopped=false;
+disposeScene=()=>{stopped=true;viewRotation=root.rotation.clone();observer.disconnect();scene.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>m.dispose())}});renderer.dispose();renderer.domElement.remove()};
+scene.add(new THREE.HemisphereLight(0xffffff,0x77716a,2.7));
+const light=new THREE.DirectionalLight(0xffffff,3.5);light.position.set(3,6,5);light.castShadow=true;light.shadow.mapSize.set(1024,1024);scene.add(light);
+const fill=new THREE.DirectionalLight(0xf0e9e0,1.5);fill.position.set(-4,2,-3);scene.add(fill);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.ShadowMaterial({opacity:.13}));floor.rotation.x=-Math.PI/2;floor.position.y=-1.65;floor.receiveShadow=true;scene.add(floor);
+const root=new THREE.Group();scene.add(root);root.rotation.set(-.10,-.38,0);if(viewRotation&&old.device===data.device)root.rotation.copy(viewRotation);
+const metal=new THREE.MeshStandardMaterial({color:severity===2?0x817c76:0x99958e,metalness:.7,roughness:.36});
+const edge=new THREE.MeshStandardMaterial({color:0x303030,metalness:.45,roughness:.35});
+const ivory=new THREE.MeshStandardMaterial({color:0xe1ddd5,roughness:.6,metalness:.15});
+const black=new THREE.MeshStandardMaterial({color:0x191919,roughness:.33,metalness:.2});
+const screenMat=new THREE.MeshStandardMaterial({color:data.functionality<20?0x191919:0x753c33,emissive:data.functionality<20?0x000000:0xB74936,emissiveIntensity:data.functionality/180,roughness:.3,metalness:.15});
+const parts=[];const moving=[],cracks=[],debris=[];let screen=null;let sw=1,sh=1;
+function box(w,h,d,x,y,z,mat,parent=root){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);parts.push(mesh);return mesh;}
+function round(w,h,d,r,mat,x=0,y=0,z=0,parent=root){const shape=new THREE.Shape();shape.moveTo(-w/2+r,-h/2);shape.lineTo(w/2-r,-h/2);shape.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);shape.lineTo(w/2,h/2-r);shape.quadraticCurveTo(w/2,h/2,w/2-r,h/2);shape.lineTo(-w/2+r,h/2);shape.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);shape.lineTo(-w/2,-h/2+r);shape.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);const g=new THREE.ExtrudeGeometry(shape,{depth:d,bevelEnabled:true,bevelSize:.025,bevelThickness:.025,bevelSegments:3,steps:1});g.translate(0,0,-d/2);const m=new THREE.Mesh(g,mat);m.position.set(x,y,z);m.castShadow=true;parent.add(m);parts.push(m);return m;}
+function display(w,h,x,y,z,parent=root){sw=w;sh=h;screen=box(w,h,.025,x,y,z,screenMat,parent);return screen;}
+function keyboard(w,h,y,z,parent=root){for(let row=0;row<5;row++)for(let col=0;col<12;col++)box(w/14,.024,h/7,-w/2+col*w/12+.1,y,z-h/2+row*h/5,edge,parent);}
+switch(data.device){
+case 'Smartphone':
+ round(1.38,2.75,.16,.18,metal);round(1.24,2.57,.035,.13,black,0,0,.105);display(1.12,2.30,0,-.03,.14);box(.38,.055,.035,0,1.12,.17,black);box(.055,.4,.07,.73,.5,0,edge);box(.4,.04,.03,0,-1.15,.17,ivory);break;
+case 'Laptop':
+ box(3,.13,1.85,0,-.85,.5,metal);keyboard(2.6,1,-.76,.3);box(.78,.01,.38,0,-.77,1.1,ivory);round(3,1.95,.12,.08,metal,0,.15,-.38);display(2.72,1.65,0,.15,-.29);box(.05,.05,.025,0,1.03,-.28,black);break;
+case 'Television':case 'Monitor':
+ const tv=data.device==='Television';round(tv?3.8:3.2,2.12,.14,.05,edge,0,.2,0);display(tv?3.55:2.94,1.86,0,.2,.09);box(.19,.65,.16,0,-1.13,0,metal);box(1.35,.08,.62,0,-1.45,.12,metal);break;
+case 'Desktop Computer':
+ round(1.55,2.65,1.2,.07,metal,0,0,0);box(1.33,2.40,.05,0,0,.64,edge);for(let i=0;i<10;i++)box(.92,.025,.02,0,-.55+i*.08,.68,black);box(.14,.14,.03,.4,.88,.69,screenMat);box(.06,.15,.03,.35,.5,.69,black);box(.06,.15,.03,.48,.5,.69,black);break;
+case 'Printer':
+ round(2.65,1.05,1.8,.10,ivory,0,-.3,0);box(2.35,.22,1.3,0,.36,-.15,metal);box(1.8,.06,.8,0,-.65,1.04,edge);box(1.55,.018,.7,0,-.59,1.03,ivory);box(1.6,.75,.045,0,.85,-.65,ivory);display(.65,.24,.68,.05,.94);break;
+case 'Keyboard':
+ box(3.6,.16,1.35,0,-.25,0,metal);keyboard(3.35,1.2,-.14,0);root.rotation.x=.42;break;
+case 'Lithium-ion Battery':
+ round(1.55,2.35,.5,.10,edge);box(.40,.12,.30,0,1.25,0,metal);display(1.2,1.6,0,0,.28);break;
+}
+// Screen indicators are separate from physical damage: a cracked device can still work.
+if(screen){const panel=new THREE.Group();screen.add(panel);const col=data.battery>=50?0x9ccdb2:data.battery>=20?0xe2bc70:0xc77462;const barMat=new THREE.MeshBasicMaterial({color:col});box(sw*.3,.055,.012,sw*.21,sh*.38,.025,edge,panel);const bw=data.hasBattery?sw*.28*data.battery/100:0;if(bw>0)box(bw,.035,.015,sw*.07+bw/2,sh*.38,.038,barMat,panel);
+ if(data.functionality>=20){for(let i=0;i<3;i++)box(sw*(.52-i*.09),.035,.012,-sw*.05,-sh*.16-i*.13,.027,new THREE.MeshBasicMaterial({color:0xd5a093}),panel);}
+ if(data.functionality<55&&data.functionality>=20){for(let i=0;i<5;i++)box(sw*.85,.018,.014,0,(i-2)*sh*.12,.045,new THREE.MeshBasicMaterial({color:i%2?0xbca69c:0x59413b}),panel);}
+}
+// Deterministic crack paths on the physical front surface.
+const crackMat=new THREE.LineBasicMaterial({color:0xf0e5dd,transparent:true,opacity:.85});
+if(true){const anchor=screen||parts[0];const w=screen?sw:1.2,h=screen?sh:2;for(let n=0;n<11;n++){const angle=n*2.399;const pts=[];for(let k=0;k<5;k++){const r=k/4;pts.push(new THREE.Vector3(Math.cos(angle)*w*.48*r+(k%2)*.045,Math.sin(angle)*h*.48*r,.04));}const crack=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),crackMat);anchor.add(crack);cracks.push(crack);}}
+if(true){
+ // Expose internal layers and separate major hardware pieces.
+ for(let i=0;i<parts.length;i++){const m=parts[i];if(m.parent!==root)continue;const rest=m.position.clone();moving.push({mesh:m,rest,turn:m.rotation.z});m.position.x+=(i%2?1:-1)*.09;m.position.y+=(i%3-1)*.10;m.position.z+=(i%4)*.12;m.rotation.z+=(i%2?1:-1)*.035;}
+ const startParts=parts.length;const pcb=new THREE.MeshStandardMaterial({color:0x555a50,roughness:.8});box(.62,1.0,.035,.15,-.2,.45,pcb);for(let i=0;i<4;i++)box(.16,.18,.05,-.05+(i%2)*.3,-.5+Math.floor(i/2)*.4,.49,black);
+ for(let i=0;i<12;i++){const geom=new THREE.BufferGeometry();const size=.10+(i%4)*.045;geom.setAttribute('position',new THREE.Float32BufferAttribute([0,size,0,-size,-size,0,size*.7,-size*.4,0],3));geom.computeVertexNormals();const shard=new THREE.Mesh(geom,new THREE.MeshStandardMaterial({color:0x795449,metalness:.35,roughness:.25,side:THREE.DoubleSide}));shard.position.set(Math.sin(i*2.4)*(1.1+i*.035),-1.38+(i%3)*.12,Math.cos(i*2.4)*.8+.6);shard.rotation.set(i*.7,i*.4,i);shard.castShadow=true;root.add(shard);debris.push(shard);}
+ for(let j=startParts;j<parts.length;j++)debris.push(parts[j]);
+for(const item of moving){item.target=item.mesh.position.clone();item.targetTurn=item.mesh.rotation.z;}
+}
+let dragging=false,lastX=0,lastY=0;const canvas=renderer.domElement;
+canvas.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!dragging)return;root.rotation.y+=(e.clientX-lastX)*.009;root.rotation.x=Math.max(-1,Math.min(1,root.rotation.x+(e.clientY-lastY)*.006));lastX=e.clientX;lastY=e.clientY});canvas.addEventListener('pointerup',()=>dragging=false);
+canvas.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(5,Math.min(12,camera.position.z+e.deltaY*.006))},{passive:false});
+document.getElementById('reset').onclick=()=>{root.rotation.set(data.device==='Keyboard'?.42:-.10,-.38,severity===2?.08:0);camera.position.z=8.6};
+function resize(){renderer.setSize(host.clientWidth,440);camera.aspect=host.clientWidth/440;camera.updateProjectionMatrix()}const observer=new ResizeObserver(resize);observer.observe(host);resize();
+const began=performance.now();
+function fracture(v){return Math.max(0,Math.min(1,(40-v)/30))}
+function frame(){if(stopped)return;requestAnimationFrame(frame);const t=reduced?1:Math.min(1,(performance.now()-began)/650);const eased=t*t*(3-2*t);const condition=old.condition+(data.condition-old.condition)*eased;const broken=fracture(condition);const damage=Math.max(0,Math.min(1,(75-condition)/35));
+for(const x of moving){x.mesh.position.lerpVectors(x.rest,x.target,broken);x.mesh.rotation.z=x.turn+(x.targetTurn-x.turn)*broken;}
+crackMat.opacity=damage*.85;for(let i=0;i<cracks.length;i++)cracks[i].visible=damage>i/15;
+for(const d of debris){d.visible=broken>.01;d.scale.setScalar(Math.max(.001,broken));}
+const f=old.functionality+(data.functionality-old.functionality)*eased;screenMat.emissiveIntensity=f<20?0:f/180;
+if(!document.hidden)renderer.render(scene,camera)}frame();
+}catch(e){document.getElementById('fallback').style.display='block';document.getElementById('reset').style.display='none';}
+ }
+window.addEventListener('message',event=>{if(event.source!==window.parent)return;if(event.data.type==='streamlit:render'){renderScene(event.data.args);window.parent.postMessage({isStreamlitMessage:true,type:'streamlit:setFrameHeight',height:442},'*')}});
+window.parent.postMessage({isStreamlitMessage:true,type:'streamlit:componentReady',apiVersion:1},'*');
+</script></body></html>
