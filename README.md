@@ -14,6 +14,12 @@ Reclaim aims to support accountable e-waste handling and help identify gaps that
 
 Built with Python, Streamlit, scikit-learn, Plotly, Solidity, Web3.py, Ganache and Three.js.
 
+## How traceability works
+
+Each device receives an automatically generated ID and a product passport. Its holder can record collection, inspection, repair or recycling. A handover requires the named recipient to accept it, while corrections become new notes rather than edits to earlier entries. Recycling closes further lifecycle transitions.
+
+The Solidity contract enforces these rules on a local Ethereum development chain. Optional evidence files are represented by SHA-256 fingerprints; their contents are not stored on-chain. The chain checker compares every block’s parent reference with the preceding block. This demonstrates local consistency, rather than independent proof of a device’s physical journey.
+
 ## Quick start
 
 Requires Python 3.11+ and Node.js/npm. Run from the repository folder:
@@ -37,15 +43,33 @@ python -m streamlit run App_Production.py --server.address 127.0.0.1
 
 Open [Reclaim locally](http://127.0.0.1:8501). This demo uses unlocked local accounts and no real funds. Keep the app and Ethereum RPC restricted to your computer. See [phone QR setup and local state](docs/ARCHITECTURE.md#local-state-and-phone-qr-setup) for Wi-Fi passport access.
 
-## Machine learning
+## Machine learning in Outlook
 
-Outlook uses multiple linear regression to estimate e-waste generation from population, GDP and internet users. It trains on 14 annual records from 2010–2023 and applies predefined inputs for 2026–2030. Recycling and unrecycled quantities are calculated using assumed recycling rates.
+Outlook uses **supervised learning with multiple linear regression**, implemented through scikit-learn’s `LinearRegression`, to estimate annual global e-waste generation in **million tonnes (Mt)**. Its three input features are global population in billions, GDP in trillions of USD, and internet users in billions.
 
-The dataset has no documented source and out-of-sample accuracy has not been established. Treat the outputs as illustrative scenarios. [Model details](docs/ARCHITECTURE.md#machine-learning-in-outlook)
+Training uses **14 annual records from 2010–2023**. The complete dataset contains 16 records through 2025; the final two years are displayed but are not used to fit the model or calculate a reported test score. For **2026–2030**, the fitted model receives predefined population, GDP and internet-use scenarios.
+
+Only the generated-waste quantity comes from ML. The other outputs follow explicit calculations:
+
+- **Recycled waste:** predicted generation multiplied by an assumed recycling rate, increasing from 23.5% in 2026 to 27.5% in 2030.
+- **Unrecycled waste:** generation minus calculated recycling.
+- **Cumulative unrecycled waste:** the dataset’s running total through 2025 plus subsequent projected unrecycled quantities.
+
+Interactive charts compare dataset records with scenario projections, and users can export the combined data as CSV. These forecasts describe possible outcomes under the supplied assumptions; they do not estimate how much waste blockchain adoption would prevent.
+
+This is a baseline ML workflow, not a validated forecasting system. The dataset’s source is undocumented, its sample is small, and no out-of-sample accuracy, baseline comparison or prediction intervals have been established. Future evaluation should use sourced observations, chronological holdout testing, and MAE/RMSE comparisons against simple forecasts. [Full model details](docs/ARCHITECTURE.md#machine-learning-in-outlook)
+
+## Device assessment
+
+The assessment combines physical condition, functionality, applicable battery health and three device-specific checks. Reported hazards or failed functions override a favourable average score. Results explain whether further inspection, repair, battery service, refurbishment or potential reuse is appropriate.
+
+Procedural Three.js models change with the condition inputs, showing surface damage or separated parts. These are stylised illustrations, not scans or diagnostics of the actual device.
 
 ## Scope and limitations
 
 This is a local research prototype. Blockchain records do not prove physical identity, truthful inspections or actual recycling, and do not prevent illegal dumping by themselves. Device assessments are triage heuristics; the contract has not been security-audited.
+
+Tests cover assessment rules, QR generation, chain links and contract behaviour.
 
 ## Documentation
 
