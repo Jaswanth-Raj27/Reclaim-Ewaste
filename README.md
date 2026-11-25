@@ -11,6 +11,8 @@ A Streamlit research prototype for electronic-product passports, Ethereum custod
 - Owners can append notes/corrections without changing earlier history, including after recycling.
 - Evidence files are SHA-256 hashed. Only the hash is recorded; file contents are neither stored nor published by the app.
 - View on-chain history, confirmation transaction hashes and blocks; export passport JSON or verify evidence against recorded hashes.
+- Explore existing EVM blocks as a linked diagram with block numbers, hashes, parent hashes, transaction counts and app events. Browse older block windows and inspect full transaction details.
+- The **Add block to chain** button mines a real empty block on the local development chain. It does not create a passport event; registrations, custody changes and lifecycle events create their own transaction blocks.
 
 `contracts/ProductPassport.sol` enforces owner permissions, two-party handoffs, unique IDs and lifecycle transitions. This replaces the MySQL hash-chain demonstration. Existing MySQL records are not migrated or presented as blockchain history.
 

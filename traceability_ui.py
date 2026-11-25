@@ -5,6 +5,7 @@ import streamlit as st
 import qrcode
 from web3 import Web3
 from blockchain_client import connect,product_id,send,STAGES,NEXT,ZERO
+from chain_explorer import render_chain
 
 def render():
     st.title('Product passports')
@@ -13,6 +14,7 @@ def render():
     except Exception as e:
         st.info(str(e));st.code('npm install\nnpm run compile\nnpm run chain\n# In another terminal:\npython scripts/deploy.py',language='shell');return
     st.caption(f'Chain {w.eth.chain_id} · Contract {c.address} · Latest block {w.eth.block_number}')
+    render_chain(w,c)
     with st.expander('Development network details'):
         st.write('These are unlocked local demo accounts. Selecting one simulates a participant; it is not production authentication. No real funds are used. Blockchain records do not prove physical identity or truthful inputs.')
     accounts=w.eth.accounts
