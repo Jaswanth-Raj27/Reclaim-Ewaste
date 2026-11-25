@@ -13,23 +13,42 @@ def mine_development_block(w):
     if latest.number<=previous:raise RuntimeError('No new block was confirmed.')
     return latest
 
-def render_chain(w,contract):
-    st.subheader('How the records are stored')
-    st.caption('Think of each block as a page in a logbook. A digital fingerprint connects it to the previous page. The blocks below come from your running local blockchain.')
+def verify_chain(w):
+    """Check every parent link in a fixed snapshot; no claim of external consensus."""
     latest=w.eth.block_number
-    actions,status=st.columns([1,2])
-    with actions:
-        if st.button('Try adding an empty block',key='mine_development_block',use_container_width=True):
+    prior=w.eth.get_block(0)
+    for n in range(1,latest+1):
+        block=w.eth.get_block(n)
+        if block.parentHash!=prior.hash:raise ValueError(f'Block #{n} does not link to block #{n-1}.')
+        prior=block
+    if w.eth.get_block(latest).hash!=prior.hash:raise ValueError('The chain changed during the check. Please try again.')
+    return latest
+
+def render_chain(w,contract):
+    latest=w.eth.block_number
+    title,action=st.columns([2,1])
+    with title:
+        st.subheader('Your blockchain')
+        st.caption(f'{latest+1} blocks saved on this computer')
+    with action:
+        if st.button('Check the chain',type='primary',use_container_width=True):
             try:
-                block=mine_development_block(w)
-                st.session_state.new_chain_block=block.number
-                st.session_state.chain_selected=block.number
-                st.rerun()
-            except Exception as exc:st.error(str(exc))
-    with status:
-        st.caption('Optional learning tool: adds a block without product data. Saving a product update automatically creates a transaction and a block—you do not need this button.')
-    if st.session_state.get('new_chain_block') is not None:
-        st.success(f"Block #{st.session_state.new_chain_block} added to the local chain.")
+                with st.spinner('Checking every block…'):checked=verify_chain(w)
+                st.session_state.chain_check=(checked,Web3.to_hex(w.eth.get_block(checked).hash))
+            except Exception as exc:
+                st.session_state.pop('chain_check',None);st.error('The check could not pass. '+str(exc))
+    result=st.session_state.get('chain_check')
+    if result:
+        checked,fingerprint=result
+        if checked<=latest and Web3.to_hex(w.eth.get_block(checked).hash)==fingerprint:
+            st.success(f'All {checked} links match through block #{checked}. No broken links were found.')
+            if latest>checked:st.caption('New blocks were added. Press Check the chain to include them.')
+        else:st.warning('The chain has changed. Check it again.')
+    st.caption('Checks that each block points to the one before it. This local check does not prove the device details are true or compare against an outside copy.')
+    with st.expander('See the blocks'):
+        render_block_details(w,contract,latest)
+
+def render_block_details(w,contract,latest):
     # Limit rendering while retaining access to the complete existing chain.
     initial=max(0,latest-5)
     end=st.number_input('Show recent blocks ending at',min_value=0,max_value=latest,value=latest,step=1,key='chain_window_end_'+str(latest))

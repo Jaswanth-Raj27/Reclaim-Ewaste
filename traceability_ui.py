@@ -1,4 +1,4 @@
-import hashlib,io,json,os
+import hashlib,io,json,os,uuid
 from datetime import datetime,timezone
 from urllib.parse import urlencode
 import streamlit as st
@@ -17,11 +17,9 @@ def render():
         with st.expander('Setup instructions'):
             st.write(str(e));st.code('npm run chain\n# In another terminal:\npython scripts/deploy.py',language='shell')
         return
-    with st.expander('New to blockchain? Start here'):
-        st.write('A product passport is a shared logbook for one device. Registration starts its story; collection, inspection, repair and recycling add new entries.')
-        st.write('Each saved action is a transaction. Transactions are stored in numbered blocks, linked together using digital fingerprints. Corrections are added as new notes, so the earlier entries stay visible.')
-        st.caption('This is a local demonstration. It records what participants submit; it cannot check whether a physical device or inspection is genuine.')
+    render_chain(w,c)
     accounts=w.eth.accounts
+    if '_switch_actor' in st.session_state:st.session_state.passport_actor=st.session_state.pop('_switch_actor')
     with st.expander('Demo participant and network settings'):
         st.caption('Switch participants to try a handover. These are simulated accounts, without sign-in or real funds.')
         actor=st.selectbox('Use the app as',accounts,format_func=lambda x:f'Participant {accounts.index(x)+1}',key='passport_actor')
@@ -34,31 +32,35 @@ def render():
         tx,block=st.session_state.passport_receipt
         st.success(f'Saved to the blockchain in block #{block}.')
         with st.expander('View save receipt'):st.code(tx,language=None)
-    st.subheader('Find a product')
-    with st.expander('Add a new product'):
-        st.caption('Create its passport once. You can add updates after registration.')
+    task=st.radio('What would you like to do?', ['Update a device','Add a device'],horizontal=True,label_visibility='collapsed')
+    if task=='Add a device':
+        st.subheader('Add your device')
         with st.form('register_passport'):
-            ref=st.text_input('Product reference',placeholder='For example, DEVICE-001',help='Use an opaque public reference. Do not enter personal information.')
-            label=st.text_input('Product name',max_chars=120)
+            label=st.text_input('Give your device a name',placeholder='For example, My old laptop',max_chars=120)
             kind=st.selectbox('Device category',['Smartphone','Laptop','Television','Lithium-ion Battery','Desktop Computer','Printer','Monitor','Keyboard'])
-            evidence=st.file_uploader('Optional evidence file — only its SHA-256 hash is recorded',key='registration_evidence')
-            submitted=st.form_submit_button('Create product passport')
+            with st.expander('Attach a file (optional)'):
+                evidence=st.file_uploader('Choose a file',key='registration_evidence')
+                st.caption('Only a fingerprint of the file is saved. The file itself is not uploaded.')
+            submitted=st.form_submit_button('Add to blockchain',type='primary')
         if submitted:
             try:
-                if not ref.strip() or not label.strip():raise ValueError('Enter a product reference and label.')
+                if not label.strip():raise ValueError('Give your device a name first.')
+                ref='DEVICE-'+uuid.uuid4().hex.upper()
                 digest=hashlib.sha256(evidence.getvalue()).digest() if evidence else bytes(32)
                 st.session_state.passport_receipt=send(w,c.functions.register(product_id(ref),label.strip(),kind,digest),actor)
                 st.session_state.passport_lookup=ref.strip();st.rerun()
             except Exception as e:st.error(str(e))
+        return
     count=c.functions.productCount().call()
     st.caption(f'{count} registered products')
     if count:
-        with st.expander('Choose a registered product',expanded=not bool(st.query_params.get('product') or st.session_state.get('passport_lookup'))):
-            ids=[Web3.to_hex(c.functions.productIdAt(i).call()) for i in range(min(count,100))]
-            names={i:c.functions.getProduct(bytes.fromhex(i[2:])).call()[0] for i in ids}
-            selected=st.selectbox('Registered products',ids,format_func=lambda i:names[i]+' · '+i[2:8],key='browse_passport')
-            if st.button('View product journey'):st.session_state.passport_lookup=selected;st.rerun()
-            if count>100:st.caption('Showing first 100. Use exact ID lookup for others.')
+        ids=[Web3.to_hex(c.functions.productIdAt(i).call()) for i in range(min(count,100))]
+        names={i:c.functions.getProduct(bytes.fromhex(i[2:])).call()[0] for i in ids}
+        def choose_device():
+            st.session_state.passport_lookup=st.session_state.browse_passport
+        st.selectbox('Choose your device',ids,format_func=lambda i:names[i]+' · '+i[2:8],key='browse_passport',on_change=choose_device)
+        if not st.session_state.get('passport_lookup'):st.session_state.passport_lookup=st.session_state.browse_passport
+        if count>100:st.caption('Showing first 100 devices. Search by ID for others.')
     incoming=st.query_params.get('product','')
     if incoming and incoming!=st.session_state.get('_last_passport_link'):
         st.session_state.passport_lookup=incoming
@@ -68,10 +70,10 @@ def render():
     expected_contract=st.query_params.get('contract')
     if (expected_chain and expected_chain!=str(w.eth.chain_id)) or (expected_contract and expected_contract.lower()!=c.address.lower()):
         st.error('This QR belongs to a different blockchain deployment. Connect to its original network and contract to view the passport.');return
-    lookup=st.text_input('Or enter a product reference',placeholder='For example, DEVICE-001',key='passport_lookup')
+    with st.expander('Find another device by ID'):
+        lookup=st.text_input('Device ID or reference',key='passport_lookup')
     if not lookup.strip():
         st.info('Choose a registered product above, or add a new product to begin.')
-        with st.expander('Explore how the blockchain works'):render_chain(w,c)
         return
     try:pid=product_id(lookup);p=c.functions.getProduct(pid).call()
     except Exception:st.warning('No passport found for this reference on the current contract.');return
@@ -107,32 +109,38 @@ def render():
         st.image(png,width=280)
         st.download_button('Download product QR',png,'reclaim-'+pid_hex[2:14]+'.png','image/png')
     if actor.lower()==p[2].lower():
-        with st.expander('Update this product',expanded=True):
+        with st.container(border=True):
+            st.subheader('Add an update')
             st.caption('You are acting as the current holder. Updates are saved as new entries.')
-            if p[4]!=4 and p[3]==ZERO:
-                recipient=st.selectbox('Hand over to', [x for x in accounts if x!=actor],format_func=participant,key='handoff_recipient')
-                if st.button('Request handover'):
-                    transact(w,c.functions.proposeTransfer(pid,recipient),actor)
-            elif p[3]!=ZERO:
-                if st.button('Cancel handover request'):transact(w,c.functions.cancelTransfer(pid),actor)
+            with st.expander('Give this device to someone else'):
+                if p[4]!=4 and p[3]==ZERO:
+                    recipient=st.selectbox('Give it to', [x for x in accounts if x!=actor],format_func=participant,key='handoff_recipient')
+                    if st.button('Ask them to accept'):transact(w,c.functions.proposeTransfer(pid,recipient),actor)
+                elif p[3]!=ZERO:
+                    if st.button('Cancel handover request'):transact(w,c.functions.cancelTransfer(pid),actor)
+                else:st.caption('This device has already been recycled.')
             with st.form('passport_event'):
                 available=NEXT[p[4]] if p[3]==ZERO else []
-                options=['Append note']+[STAGES[x] for x in available]
-                action=st.selectbox('What happened to the device?',options)
-                detail=st.text_area('Describe what happened',max_chars=500,help='Corrections are new notes. Existing events cannot be edited.')
-                evidence=st.file_uploader('Optional evidence file — hash only',key='event_evidence')
-                submit=st.form_submit_button('Save update to blockchain')
+                options=[STAGES[x] for x in available]+['Append note']
+                action=st.selectbox('What happened?',options,format_func=lambda x:{'Append note':'Add a note','Collected':'It was collected','Inspected':'It was checked','Repaired':'It was repaired','Recycled':'It was recycled'}.get(x,x))
+                detail=st.text_area('Anything to add? (optional)',placeholder='For example, Screen is cracked but the device still works.',max_chars=500)
+                with st.expander('Attach a file (optional)'):
+                    evidence=st.file_uploader('Choose a file',key='event_evidence')
+                    st.caption('Only its fingerprint is saved.')
+                submit=st.form_submit_button('Save to blockchain',type='primary')
             if submit:
-                if not detail.strip():st.error('Enter event details.')
+                if action=='Append note' and not detail.strip():st.error('Write a note before saving.')
                 else:
                     digest=hashlib.sha256(evidence.getvalue()).digest() if evidence else bytes(32)
-                    fn=c.functions.appendNote(pid,detail.strip(),digest) if action=='Append note' else c.functions.updateStage(pid,STAGES.index(action),detail.strip(),digest)
+                    fn=c.functions.appendNote(pid,detail.strip(),digest) if action=='Append note' else c.functions.updateStage(pid,STAGES.index(action),detail.strip() or ('Device '+action.lower()+'.'),digest)
                     transact(w,fn,actor)
     elif actor.lower()==p[3].lower():
         st.info('This participant is the nominated recipient. Ownership changes only after acceptance.')
         if st.button('Accept this handover'):transact(w,c.functions.acceptTransfer(pid),actor)
     else:
-        st.caption('To add an update, select '+participant(p[2])+' in Demo participant and network settings.')
+        st.info('This device is held by '+participant(p[2])+'.')
+        if p[2] in accounts and st.button('Use demo as '+participant(p[2])+' to add an update'):
+            st.session_state._switch_actor=p[2];st.rerun()
     st.subheader('Recorded journey')
     st.caption('Newest entries first. These are statements saved on the blockchain, not independent physical inspections.')
     n=c.functions.historyCount(pid).call()
@@ -147,7 +155,6 @@ def render():
             st.write('Requested handover to '+participant(Web3.to_checksum_address(event[3])) if event[2]=='Transfer proposed' else event[3])
             if event[4]!=bytes(32):
                 with st.expander('Evidence fingerprint'):st.code(event[4].hex(),language=None)
-    with st.expander('Explore the blockchain behind this journey'):render_chain(w,c)
     st.download_button('Export passport history',json.dumps({'chain_id':1337,'contract':c.address,'product_id':pid_hex,'events':list(reversed(rows))},indent=2),'passport.json','application/json')
     with st.expander('Verify an evidence file'):
         check=st.file_uploader('Select the original file',key='verify_passport_evidence')
