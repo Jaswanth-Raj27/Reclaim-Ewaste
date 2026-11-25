@@ -2,6 +2,14 @@
 
 A Streamlit research prototype for electronic-product passports, Ethereum custody transfers, interactive 3D condition assessment and illustrative e-waste forecasting.
 
+## Project purpose
+
+Reclaim aims to help reduce unrecycled electronic waste and support efforts to identify and deter illegal dumping, including shipments to lower-income countries with limited capacity for safe e-waste handling.
+
+The proposed approach is to make a device’s recorded journey easier to follow: who registered it, who accepted each handover, and whether collection, inspection, repair or recycling was recorded. An append-only blockchain history could support accountability and help investigators spot missing or disputed handovers when combined with verified participants, physical inspections and independent recycling evidence.
+
+This is the project’s intended contribution, not a demonstrated reduction in dumping. The current prototype runs on a local blockchain and does not track physical location, verify shipment legality, authenticate recyclers or prove that recorded recycling actually occurred. Preventing illegal dumping also requires enforcement and reliable checks outside the blockchain.
+
 ## Blockchain product traceability
 
 - **Add a device:** choose its type, give it a name and press **Add to blockchain**. A unique device reference is generated automatically.
@@ -74,6 +82,30 @@ The result explains why a device is a reuse or refurbishment candidate, needs re
 ## Outlook and interface
 
 Outlook provides regression scenario forecasts, charts and CSV export. The workspace uses the ink-and-vermilion palette with client-side tabs for Outlook, Traceability and Device assessment.
+
+### Machine learning in Outlook
+
+Outlook uses **supervised learning with multiple linear regression**, implemented with scikit-learn’s `LinearRegression`, to estimate annual global e-waste generation.
+
+| Model input | Unit |
+| --- | --- |
+| Global population | Billions of people |
+| Global GDP | Trillions of USD |
+| Global internet users | Billions of people |
+
+The target is **e-waste generated in million tonnes (Mt)**. The model is trained on **14 annual records from 2010–2023**. The dataset contains 16 records through 2025; the 2024–2025 records are displayed but are not used for model fitting or a reported test score.
+
+For **2026–2030**, predefined population, GDP and internet-user scenarios are passed to the fitted model. The dashboard then calculates:
+
+- **Generated waste:** the model’s prediction.
+- **Recycled waste:** predicted generation multiplied by an assumed recycling rate, rising from **23.5% in 2026 to 27.5% in 2030**.
+- **Unrecycled waste:** predicted generation minus calculated recycled waste.
+- **Cumulative unrecycled waste:** the dataset’s cumulative total through 2025 plus each projected year’s unrecycled waste. The total starts in 2010.
+
+**Only generation is predicted by ML.** Recycling rates and future predictor values are predefined assumptions. The charts and CSV export expose these illustrative scenarios; they do not measure an effect caused by blockchain use.
+
+This is a baseline forecasting prototype. The small dataset has no documented source, and no out-of-sample accuracy estimate, baseline comparison or prediction intervals have been established. The results should not be presented as validated real-world forecasts. Stronger evaluation would require sourced data, chronological holdout testing and comparison with simple forecasting baselines.
+
 
 ## Validation
 
